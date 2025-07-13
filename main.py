@@ -3,8 +3,8 @@ import os
 import config
 from scrappers.mojedelo_scrapper import MojedeloScrapper
 
-file_paht = os.path.join(config.LOGGING_PATH, config.LOGGING_NAME)
-logger = setup_logger(file_paht, config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES, )
+file_path = os.path.join(config.LOGGING_PATH, "main.log")
+logger = setup_logger("main" ,file_path, config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES)
 
 def run_scrappers():
     scrappers = config.SCRAPPERS
@@ -13,9 +13,9 @@ def run_scrappers():
         try:
             scrapper.run()
         except Exception as e:
-            scrapper.error(f"Error running: {e}")
+            logger.error(f"Error running {scrapper.name}: {e}")
         else:
-            scrapper.info(f"completed successfully.")
+            logger.info(f"{scrapper.name} finished.")
 
 if __name__ == "__main__":
     logger.info("Starting scrappers...")
