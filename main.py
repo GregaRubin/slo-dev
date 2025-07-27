@@ -1,10 +1,12 @@
 from logger import setup_logger
 import os
 import config
-from scrappers.mojedelo_scrapper import MojedeloScrapper
+from pathlib import Path
+from utils.config_utils import get_absolute_path
 
-file_path = os.path.join(config.LOGGING_PATH, "main.log")
-logger = setup_logger("main" ,file_path, config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES)
+logging_folder = get_absolute_path(config.LOGGING_PATH)
+logging_path = os.path.join(logging_folder, "main.log")
+logger = setup_logger("main", logging_path, config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES)
 
 def run_scrappers():
     scrappers = config.SCRAPPERS
