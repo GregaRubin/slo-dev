@@ -46,39 +46,31 @@ class BaseScrapper(ABC):
     def send_to_ingestion_service(self, jobs: list[JobInfo]):
         pass
 
-    def load(self):
-        data = self.load_scrapper_config()
+    def load_state(self):
+        data = self.load_scrapper_state()
         if not data:
-            self.info("No saved config found, using defaults.")
+            self.info("No saved state found, using defaults.")
             return
 
-        self.enable_backfill = data.get("enable_backfill", self.enable_backfill)
-        self.fetch_limit = data.get("fetch_limit", self.fetch_limit)
-        self.backfill_limit = data.get("backfill_limit", self.backfill_limit)
         self.last_fetch_timestamp = data.get("last_fetch_timestamp", self.last_fetch_timestamp)
         self.last_backfill_timestamp = data.get("last_backfill_timestamp", self.last_backfill_timestamp)
         self.last_run_timestamp = data.get("last_run_timestamp", self.last_run_timestamp)
-        self.run_interval_seconds = data.get("run_interval_seconds", self.run_interval_seconds)
 
-        self.info(f"Loaded scrapper config: {data}")
+        self.info(f"Loaded scrapper state: {data}")
 
 
-    def save(self):
+    def save_state(self):
         data = {
-            "enable_backfill": self.enable_backfill,
-            "fetch_limit": self.fetch_limit,
-            "backfill_limit": self.backfill_limit,
             "last_fetch_timestamp": self.last_fetch_timestamp,
             "last_backfill_timestamp": self.last_backfill_timestamp,
             "last_run_timestamp": self.last_run_timestamp,
-            "run_interval_seconds": self.run_interval_seconds,
         }
 
-        self.save_scrapper_config(data)
-        self.info(f"Saved scrapper config: {data}")
+        self.save_scrapper_state(data)
+        self.info(f"Saved scrapper state: {data}")
 
 
-    def load_scrapper_config(self):
+    def load_scrapper_state(self):
         try:
             config_path = config.SCRAPPER_CONFIG_FOLDER + "/" + self.name + ".json"
             return utils.config_utils.load_json_file(config_path)
@@ -86,7 +78,7 @@ class BaseScrapper(ABC):
             self.error(f"Error loading scrapper config: {e}")
             return None
         
-    def save_scrapper_config(self, data: dict):
+    def save_scrapper_state(self, data: dict):
         try:
             config_path = config.SCRAPPER_CONFIG_FOLDER + "/" + self.name + ".json"
             utils.config_utils.save_json_file(config_path, data)
@@ -97,7 +89,7 @@ class BaseScrapper(ABC):
         try:
             lock = FileLock(f"{tempfile.gettempdir()}/{self.name}.lock")
             with lock.acquire(timeout=1):
-                self.load()
+                self.load_state()
                 
                 now_ts = int(datetime.now(timezone.utc).timestamp())
                 if now_ts - self.last_run_timestamp < self.run_interval_seconds:
@@ -105,21 +97,25 @@ class BaseScrapper(ABC):
                     "Skipping run: interval not reached "
                     f"(last_run={self.last_run_timestamp}, interval={self.run_interval_seconds}s)"
                     )
-                    self.save()
                     return
                 
                 self.info("Scraper run started")
                 existing_hashes = self.get_existing_job_hashes()
-                #todo update last fetch date
                 new_jobs = self.fetch(self.fetch_limit, existing_hashes, self.last_fetch_timestamp)
                 self.info(f"Fetched {len(new_jobs)} new jobs")
+
+                #todo update ts on successfull kafka enqueue
+                newest_date = self.last_fetch_timestamp
+                for job in new_jobs:
+                    newest_date = max(job.post_timestamp, newest_date)
+                self.last_fetch_timestamp = newest_date
 
                 if self.enable_backfill:
                     old_jobs = self.backfill(self.backfill_limit, existing_hashes, self.last_backfill_timestamp)
                     self.info(f"Backfilled {len(old_jobs)} old jobs")
-                    oldest_date = self.last_backfill_date
+                    oldest_date = self.last_backfill_timestamp
                     for job in old_jobs:
-                        oldest_date = min(job.date, oldest_date)
+                        oldest_date = min(job.post_timestamp, oldest_date)
 
                     self.last_backfill_date = oldest_date
                     new_jobs += old_jobs
@@ -131,7 +127,7 @@ class BaseScrapper(ABC):
         except Exception as e:
             self.error(f"Error running scrapper: {e}")
         finally:
-            self.save()
+            self.save_state()
 
     def error(self, message):
         self.logger.error(f"{message}")

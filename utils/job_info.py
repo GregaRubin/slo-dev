@@ -3,7 +3,7 @@ class JobInfo:
     def __init__(self, job_title, company, timestamp, link, website, country, locations, description):
         self.job_title = job_title
         self.company = company
-        self.timestamp = timestamp # unix seconds
+        self.post_timestamp = timestamp # unix seconds
         self.link = link
         self.website = website
         self.description = description
@@ -12,4 +12,4 @@ class JobInfo:
         self.hash = hashlib.sha256(f"{job_title}{company}{timestamp}{link}".encode("utf-8")).hexdigest()
 
     def __repr__(self):
-        return f"JobInfo(job title={self.job_title}, company={self.company}, timestamp={self.timestamp}, link={self.link}, site={self.website})"
+        return f"JobInfo(job title={self.job_title}, company={self.company}, timestamp={self.post_timestamp}, link={self.link}, site={self.website})"
