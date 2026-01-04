@@ -1,3 +1,6 @@
 *.pyc
 __pycache__/
 logs/
+.env
+jobs.txt
+temp.py

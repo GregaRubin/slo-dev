@@ -1,13 +1,15 @@
 import hashlib
 class JobInfo:
-    def __init__(self, title, company, date, link, site):
-        self.title = title
+    def __init__(self, job_title, company, timestamp, link, website, country, locations, description):
+        self.job_title = job_title
         self.company = company
-        self.date = date # Ensure date is a string in the format 'dd. mm. yyyy'
+        self.timestamp = timestamp # unix seconds
         self.link = link
-        self.site = site
-        self.description = None
-        self.hash = hashlib.sha256(f"{title}{company}{date}{link}".encode("utf-8")).hexdigest()
+        self.website = website
+        self.description = description
+        self.country = country
+        self.locations = locations
+        self.hash = hashlib.sha256(f"{job_title}{company}{timestamp}{link}".encode("utf-8")).hexdigest()
 
     def __repr__(self):
-        return f"JobInfo(title={self.title}, company={self.company}, date={self.date}, link={self.link}, site={self.site})"
+        return f"JobInfo(job title={self.job_title}, company={self.company}, timestamp={self.timestamp}, link={self.link}, site={self.website})"
