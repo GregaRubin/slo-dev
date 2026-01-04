@@ -1,5 +1,5 @@
 import config
-from logger import setup_logger
+from utils.logger import setup_logger
 from datetime import datetime, timedelta, timezone
 from utils.job_info import JobInfo
 import tempfile
@@ -12,8 +12,8 @@ class BaseScrapper(ABC):
     Base class for scrappers.
     """
     def __init__(self, name: str, enable_backfill: bool, fetch_limit: int, backfill_limit: int, run_interval_seconds: int):
-        logging_folder = utils.config_utils.get_absolute_path(config.LOGGING_PATH)
-        file_path = logging_folder + "/" + name + ".log"
+        #todo constructor values should not be saved to json, only the timestamps should be saved.
+        file_path = config.LOGGING_FOLDER + "/" + name + ".log"
         self.logger = setup_logger(name, file_path, config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES, config.LOGGIN_LEVEL)
         self.name = name
         self.enable_backfill = enable_backfill
@@ -80,7 +80,7 @@ class BaseScrapper(ABC):
 
     def load_scrapper_config(self):
         try:
-            config_path = utils.config_utils.get_absolute_path(config.SCRAPPER_CONFIG_PATH) + "/" + self.name + ".json"
+            config_path = config.SCRAPPER_CONFIG_FOLDER + "/" + self.name + ".json"
             return utils.config_utils.load_json_file(config_path)
         except Exception as e:
             self.error(f"Error loading scrapper config: {e}")
@@ -88,7 +88,7 @@ class BaseScrapper(ABC):
         
     def save_scrapper_config(self, data: dict):
         try:
-            config_path = utils.config_utils.get_absolute_path(config.SCRAPPER_CONFIG_PATH) + "/" + self.name + ".json"
+            config_path = config.SCRAPPER_CONFIG_FOLDER + "/" + self.name + ".json"
             utils.config_utils.save_json_file(config_path, data)
         except Exception as e:
             self.error(f"Error saving scrapper config: {e}")
@@ -101,14 +101,22 @@ class BaseScrapper(ABC):
                 
                 now_ts = int(datetime.now(timezone.utc).timestamp())
                 if now_ts - self.last_run_timestamp < self.run_interval_seconds:
+                    self.info(
+                    "Skipping run: interval not reached "
+                    f"(last_run={self.last_run_timestamp}, interval={self.run_interval_seconds}s)"
+                    )
+                    self.save()
                     return
-
+                
+                self.info("Scraper run started")
                 existing_hashes = self.get_existing_job_hashes()
                 #todo update last fetch date
                 new_jobs = self.fetch(self.fetch_limit, existing_hashes, self.last_fetch_timestamp)
+                self.info(f"Fetched {len(new_jobs)} new jobs")
 
                 if self.enable_backfill:
                     old_jobs = self.backfill(self.backfill_limit, existing_hashes, self.last_backfill_timestamp)
+                    self.info(f"Backfilled {len(old_jobs)} old jobs")
                     oldest_date = self.last_backfill_date
                     for job in old_jobs:
                         oldest_date = min(job.date, oldest_date)
@@ -117,10 +125,13 @@ class BaseScrapper(ABC):
                     new_jobs += old_jobs
 
                 self.send_to_ingestion_service(new_jobs)
+                self.info(f"Sent {len(new_jobs)} jobs to ingestion service")
                 self.last_run_timestamp = now_ts
-                self.save()            
+                self.info("Scraper run finished successfully")
         except Exception as e:
             self.error(f"Error running scrapper: {e}")
+        finally:
+            self.save()
 
     def error(self, message):
         self.logger.error(f"{message}")

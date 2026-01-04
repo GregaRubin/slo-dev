@@ -1,9 +1,6 @@
 from pathlib import Path
 import json
 
-def get_absolute_path(relative_path: str) -> str:
-    return str(Path(__file__).resolve().parent / relative_path)
-
 def load_json_file(file_path: str) -> dict:
     try:
         with open(file_path, 'r') as file:

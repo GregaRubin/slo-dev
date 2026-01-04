@@ -1,19 +1,14 @@
-from logger import setup_logger
-import os
+from utils.logger import setup_logger
 import config
-from pathlib import Path
-from utils.config_utils import get_absolute_path
 from dotenv import load_dotenv
 from scrappers.moje_delo_scrapper import MojeDeloScrapper
 
 load_dotenv()
 
 SCRAPPERS = [
-    MojeDeloScrapper("MojedeloScrapper", False, 10, 50, 600),]
+    MojeDeloScrapper("MojedeloScrapper", False, 1, 50, 10),]
 
-logging_folder = get_absolute_path(config.LOGGING_PATH)
-logging_path = os.path.join(logging_folder, "main.log")
-logger = setup_logger("main", logging_path, config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES)
+logger = setup_logger("main", config.LOGGING_FOLDER + "/main.log", config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES)
 
 def run_scrappers():
     scrappers = SCRAPPERS
