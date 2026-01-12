@@ -4,4 +4,4 @@ logs/
 .env
 jobs.txt
 temp.py
-scrapper_configs/
+scrapper_states/

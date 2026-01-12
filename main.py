@@ -6,7 +6,7 @@ from scrappers.moje_delo_scrapper import MojeDeloScrapper
 load_dotenv()
 
 SCRAPPERS = [
-    MojeDeloScrapper("MojedeloScrapper", False, 5, 50, 10),]
+    MojeDeloScrapper("MojedeloScrapper", True, 5, 5, 10),]
 
 logger = setup_logger("main", config.LOGGING_FOLDER + "/main.log", config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES)
 

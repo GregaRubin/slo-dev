@@ -11,8 +11,7 @@ class BaseScrapper(ABC):
     """
     Base class for scrappers.
     """
-    def __init__(self, name: str, enable_backfill: bool, fetch_limit: int, backfill_limit: int, run_interval_seconds: int):
-        #todo constructor values should not be saved to json, only the timestamps should be saved.
+    def __init__(self, name: str, enable_backfill: bool, fetch_limit: int, backfill_limit: int, run_interval_minutes: int):
         file_path = config.LOGGING_FOLDER + "/" + name + ".log"
         self.logger = setup_logger(name, file_path, config.LOGGING_MAX_BYTES, config.LOGGING_MAX_FILES, config.LOGGIN_LEVEL)
         self.name = name
@@ -20,12 +19,12 @@ class BaseScrapper(ABC):
         self.fetch_limit = fetch_limit
         self.backfill_limit = backfill_limit
         #todo change days to 1
-        yesterday = datetime.now(timezone.utc).date() - timedelta(days=10)
+        yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
         dt_yesterday = datetime.combine(yesterday, datetime.min.time(), tzinfo=timezone.utc)
         self.last_fetch_timestamp = int(dt_yesterday.timestamp())
         self.last_backfill_timestamp = self.last_fetch_timestamp - 1
         self.last_run_timestamp = 0
-        self.run_interval_seconds = run_interval_seconds
+        self.run_interval_minutes = run_interval_minutes
 
     # get job postings from last_fetch_date (unix seconds) to newer job postings, should not scrape existing jobs again
     @abstractmethod
@@ -67,23 +66,24 @@ class BaseScrapper(ABC):
         }
 
         self.save_scrapper_state(data)
-        self.info(f"Saved scrapper state: {data}")
-
 
     def load_scrapper_state(self):
         try:
-            config_path = config.SCRAPPER_CONFIG_FOLDER + "/" + self.name + ".json"
-            return utils.config_utils.load_json_file(config_path)
+            config_path = config.SCRAPPER_STATES_FOLDER + "/" + self.name + ".json"
+            data = utils.config_utils.load_json_file(config_path)
+            self.info(f"Loaded scrapper state from {config_path}: {data}")
+            return data
         except Exception as e:
-            self.error(f"Error loading scrapper config: {e}")
+            self.error(f"Error loading scrapper state: {e}")
             return None
         
     def save_scrapper_state(self, data: dict):
         try:
-            config_path = config.SCRAPPER_CONFIG_FOLDER + "/" + self.name + ".json"
+            config_path = config.SCRAPPER_STATES_FOLDER + "/" + self.name + ".json"
             utils.config_utils.save_json_file(config_path, data)
+            self.info(f"Saved scrapper state to {config_path}: {data}")
         except Exception as e:
-            self.error(f"Error saving scrapper config: {e}")
+            self.error(f"Error saving scrapper state: {e}")
 
     def run(self):
         try:
@@ -92,10 +92,10 @@ class BaseScrapper(ABC):
                 self.load_state()
                 
                 now_ts = int(datetime.now(timezone.utc).timestamp())
-                if now_ts - self.last_run_timestamp < self.run_interval_seconds:
+                if now_ts - self.last_run_timestamp < self.run_interval_minutes * 60:
                     self.info(
                     "Skipping run: interval not reached "
-                    f"(last_run={self.last_run_timestamp}, interval={self.run_interval_seconds}s)"
+                    f"(last_run={self.last_run_timestamp}, interval={self.run_interval_minutes}min)"
                     )
                     return
                 
