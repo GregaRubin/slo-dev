@@ -18,13 +18,13 @@ class BaseScrapper(ABC):
         self.enable_backfill = enable_backfill
         self.fetch_limit = fetch_limit
         self.backfill_limit = backfill_limit
+        self.run_interval_minutes = run_interval_minutes
         #todo change days to 1
         yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
         dt_yesterday = datetime.combine(yesterday, datetime.min.time(), tzinfo=timezone.utc)
         self.last_fetch_timestamp = int(dt_yesterday.timestamp())
         self.last_backfill_timestamp = self.last_fetch_timestamp - 1
         self.last_run_timestamp = 0
-        self.run_interval_minutes = run_interval_minutes
 
     # get job postings from last_fetch_date (unix seconds) to newer job postings, should not scrape existing jobs again
     @abstractmethod
@@ -123,11 +123,10 @@ class BaseScrapper(ABC):
                 self.send_to_ingestion_service(new_jobs)
                 self.info(f"Sent {len(new_jobs)} jobs to ingestion service")
                 self.last_run_timestamp = now_ts
+                self.save_state()
                 self.info("Scraper run finished successfully")
         except Exception as e:
             self.error(f"Error running scrapper: {e}")
-        finally:
-            self.save_state()
 
     def error(self, message):
         self.logger.error(f"{message}")
