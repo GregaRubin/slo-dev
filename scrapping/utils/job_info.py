@@ -9,17 +9,20 @@ class JobInfo:
         self.description = None
         self.country = None
         self.work_locations = None
-        self.experience_level = None
+        self.seniority_level = None
         self.years_of_experience = None
         self.programming_languages = None
         self.frameworks = None
         self.databases = None
         self.other_tools = None
-        self.role_type = None
-        self.work_mode = None
+        self.work_mode = None 
         self.salary_min = None
         self.salary_max = None
+        self.job_specialization = None
         self.employment_type = None
+        self.closing_timestamp = None
+        self.visa_sponsorhip = None
+        self.industry = None
 
         self.hash = hashlib.sha256(f"{job_title}{company}{timestamp}{link}".encode("utf-8")).hexdigest()
 
